@@ -1,0 +1,51 @@
+name: Collect Spothole Data
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: collect
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: pip install -r collector/requirements.txt
+
+      - name: Run collector
+        env:
+          QRZ_USERNAME: ${{ secrets.QRZ_USERNAME }}
+          QRZ_PASSWORD: ${{ secrets.QRZ_PASSWORD }}
+        run: python collector/collect.py
+
+      - name: Commit and push (rebase-retry)
+        run: |
+          git config user.name  "spothole-bot"
+          git config user.email "actions@github.com"
+          for i in 1 2 3 4 5; do
+            git add -A
+            if git diff --cached --quiet; then
+              echo "No changes to commit."; break
+            fi
+            git commit -m "Update Spothole data $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            git pull --rebase --autostash -X theirs origin main || true
+            if git push origin main; then
+              echo "Pushed on attempt $i."; break
+            fi
+            echo "Push failed on attempt $i, retrying..."; sleep 3
+          done
