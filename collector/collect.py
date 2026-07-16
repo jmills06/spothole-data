@@ -55,7 +55,7 @@ def main():
             last_received = json.load(open(STATE)).get("last_received", 0)
         new = [s for s in master if (s.get("received_time") or 0) > last_received]
         if new:
-            day = dt.datetime.utcnow().strftime("%Y-%m-%d")
+            day = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d")
             path = f"{HIST_DIR}/{day}.jsonl"
             os.makedirs(HIST_DIR, exist_ok=True)
             seen = set()
@@ -87,7 +87,7 @@ def main():
     # --- Manifest ---
     manifest = {
         "generated": now,
-        "generated_iso": dt.datetime.utcfromtimestamp(now).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "generated_iso": dt.datetime.fromtimestamp(now, dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "schema_version": 1,
         "distance_unit": DISTANCE_UNIT,
         "qth": QTH,
