@@ -1,0 +1,4 @@
+# Normalize line endings to LF; the collector and workflow run on Ubuntu.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
