@@ -1,6 +1,12 @@
 import os
 import requests
-from config import API_BASE, USER_AGENT, HTTP_TIMEOUT
+from config import API_BASE, USER_AGENT
+
+# (connect, read) timeout in seconds. Connect stays short so a genuinely
+# dead server fails fast; read is generous because QRZ enrichment on
+# Spothole's side does a per-callsign XML lookup and can be slow on a
+# broad pull, especially while its callsign cache is cold.
+HTTP_TIMEOUT = (10, 180)
 
 
 def _qrz_params():
