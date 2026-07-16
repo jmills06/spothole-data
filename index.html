@@ -1,1 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Parks on the Air Live Spots</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://api.pota.app">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --forest: #1a3a1a;
+    --deep-forest: #0d1f0d;
+    --orange: #FF9800;
+    --light-green: #8BC34A;
+    --park-green: #43A047;
+    --forest-text: #1b5e20;
+    --forest-text-2: #2e7d32;
+    --mint: #e8f5e9;
+    --amber: #FFC107;
+    --soft-red: #E57373;
+    --gray: #9E9E9E;
+    --shadow: 0 10px 34px rgba(0,0,0,0.45);
+    /* mode colors tuned for white panels */
+    --mode-phone: #2e7d32;
+    --mode-cw: #c2185b;
+    --mode-data: #ef6c00;
+  }
 
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body { width: 1080px; height: 1920px; overflow: hidden; }
+
+  body {
+    font-family: 'Roboto', 'Segoe UI', Arial, sans-serif;
+    background:
+      radial-gradient(1100px 750px at 92% -8%, rgba(139,195,74,0.14), transparent 62%),
+      radial-gradient(950px 700px at -8% 104%, rgba(255,152,0,0.09), transparent 60%),
+      linear-gradient(135deg, var(--forest) 0%, var(--deep-forest) 100%);
+    color: #fff;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    position: relative;
+  }
+
+  /* topographic contour texture, like a park trail map */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='540' height='540' viewBox='0 0 540 540'%3E%3Cg fill='none' stroke='%238BC34A' stroke-opacity='0.075' stroke-width='1.5'%3E%3Cpath d='M120 140c40-45 130-55 180-20s55 95 15 135-125 50-175 20-60-90-20-135z'/%3E%3Cpath d='M145 160c32-34 100-42 140-15s44 72 12 103-97 38-136 15-48-69-16-103z'/%3E%3Cpath d='M170 180c24-23 70-29 100-10s32 50 8 71-68 27-96 11-36-49-12-72z'/%3E%3Cpath d='M196 199c15-14 44-18 63-6s20 31 5 44-43 17-60 7-23-31-8-45z'/%3E%3Cpath d='M330 400c30-40 105-50 150-18s48 82 12 118-105 42-148 12-44-72-14-112z'/%3E%3Cpath d='M352 418c23-30 80-38 115-13s37 62 9 90-80 32-113 9-34-56-11-86z'/%3E%3Cpath d='M375 437c16-20 55-26 79-9s25 42 6 61-55 22-77 6-24-38-8-58z'/%3E%3Cpath d='M398 456c9-11 30-14 44-5s14 23 3 34-30 12-43 3-13-21-4-32z'/%3E%3C/g%3E%3C/svg%3E");
+    background-size: 540px 540px;
+  }
+
+  #header, #spots-panel { position: relative; z-index: 1; }
+
+  /* ---------------- header panel ---------------- */
+  #header {
+    background: rgba(255,255,255,0.96);
+    border-radius: 18px;
+    box-shadow: var(--shadow);
+    padding: 22px 28px 18px;
+    flex-shrink: 0;
+  }
+
+  .header-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+  }
+
+  #title-wrap h1 {
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: 44px; font-weight: 700; letter-spacing: 1px;
+    color: var(--forest-text);
+    line-height: 1.05;
+  }
+  #title-wrap h1 .accent { color: var(--orange); }
+  #title-wrap .sub {
+    font-size: 15px; letter-spacing: 3px; text-transform: uppercase;
+    color: var(--forest-text-2); opacity: 0.7; margin-top: 6px; font-weight: 500;
+  }
+
+  #clock-wrap { text-align: right; }
+  #utc-clock {
+    font-family: 'Roboto Condensed', sans-serif; font-weight: 700;
+    font-size: 46px; color: var(--forest-text); line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  #utc-clock .z {
+    font-size: 20px; color: var(--orange); vertical-align: 6px; margin-left: 4px;
+  }
+  #meta-line {
+    font-size: 15px; color: var(--forest-text-2); opacity: 0.8; margin-top: 8px;
+    font-variant-numeric: tabular-nums;
+  }
+  #meta-line.stale { color: #b45f00; opacity: 1; font-weight: 700; }
+
+  /* ---------------- stat strip ---------------- */
+  #stat-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-top: 20px;
+  }
+  .stat {
+    background: var(--mint);
+    border-radius: 12px;
+    border-left: 4px solid var(--park-green);
+    padding: 12px 10px 10px;
+    text-align: center;
+  }
+  .stat .v {
+    font-family: 'Roboto Condensed', sans-serif; font-weight: 700;
+    font-size: 46px; color: var(--forest-text); line-height: 1;
+  }
+  .stat .v .unit { font-size: 22px; margin-left: 3px; }
+  .stat .l {
+    font-size: 12px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--forest-text-2); opacity: 0.75; margin-top: 6px; font-weight: 500;
+  }
+  .stat.hot { border-left-color: var(--orange); background: rgba(255,152,0,0.12); }
+  .stat.hot .v { color: #b45f00; }
+
+  /* ---------------- band chips ---------------- */
+  #band-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .band-chip {
+    flex: 1;
+    text-align: center;
+    background: var(--mint);
+    border: 1.5px solid rgba(67,160,71,0.35);
+    border-radius: 10px;
+    padding: 7px 0 5px;
+  }
+  .band-chip .num {
+    display: block;
+    font-family: 'Roboto Condensed', sans-serif; font-weight: 700;
+    font-size: 28px; color: var(--forest-text); line-height: 1;
+  }
+  .band-chip .lbl {
+    display: block; font-size: 12px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: 1px;
+    color: var(--forest-text-2); margin-top: 3px;
+  }
+  .band-chip.hot { background: var(--orange); border-color: var(--orange); }
+  .band-chip.hot .num, .band-chip.hot .lbl { color: #fff; }
+  .band-chip.zero { opacity: 0.35; }
+
+  /* ---------------- spots panel ---------------- */
+  #spots-panel {
+    flex: 1;
+    background: rgba(255,255,255,0.96);
+    border-radius: 18px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: 16px 0 0;
+  }
+
+  .panel-title {
+    font-family: 'Roboto Condensed', sans-serif; font-weight: 700;
+    font-size: 21px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--forest-text-2);
+    padding: 0 24px 12px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 2px solid rgba(27,94,32,0.12);
+    flex-shrink: 0;
+  }
+  .panel-title .accent { color: var(--orange); }
+  .panel-title .legend {
+    display: inline-flex; align-items: center; gap: 16px;
+    font-size: 13px; letter-spacing: 1px; font-weight: 400;
+    color: var(--forest-text-2); opacity: 0.85; text-transform: none;
+  }
+  .panel-title .legend .item { display: inline-flex; align-items: center; gap: 6px; }
+  .zone-key {
+    width: 12px; height: 12px; border-radius: 3px;
+    background: rgba(255,152,0,0.25); border: 2px solid var(--orange);
+  }
+
+  .spots-viewport { flex: 1; overflow: hidden; min-height: 0; }
+  .spots-content { will-change: transform; }
+
+  .spot {
+    display: grid;
+    grid-template-columns: 260px 1fr 220px;
+    gap: 16px;
+    align-items: center;
+    padding: 13px 24px 13px 18px;
+    border-bottom: 1px solid rgba(27,94,32,0.12);
+    border-left: 6px solid transparent;
+  }
+  .spot:nth-child(even) { background: rgba(232,245,233,0.45); }
+
+  /* In-zone highlight: the signature treatment */
+  .spot.in-zone { border-left-color: var(--orange); background: rgba(255,152,0,0.10); }
+  .spot.in-zone:nth-child(even) { background: rgba(255,152,0,0.14); }
+
+  .callsign {
+    font-family: 'Roboto Condensed', sans-serif; font-weight: 700;
+    font-size: 30px; color: var(--orange); letter-spacing: 0.5px; line-height: 1.05;
+  }
+  .op-name {
+    font-size: 14px; color: var(--forest-text-2); opacity: 0.85; margin-top: 2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .call-meta {
+    display: flex; align-items: center; gap: 9px; margin-top: 5px;
+  }
+  .mode-chip {
+    font-family: 'Roboto Condensed', sans-serif; font-weight: 700;
+    font-size: 14px; letter-spacing: 1px;
+    padding: 2px 10px; border-radius: 999px;
+    background: var(--mint); border: 1.5px solid rgba(67,160,71,0.35);
+    color: var(--forest-text-2);
+  }
+  .mode-chip.phone { color: var(--mode-phone); border-color: rgba(46,125,50,0.5); }
+  .mode-chip.cw    { color: var(--mode-cw);    border-color: rgba(194,24,91,0.4);  background: #fdf0f5; }
+  .mode-chip.data  { color: var(--mode-data);  border-color: rgba(239,108,0,0.4);  background: #fff5ec; }
+  .spot-count {
+    font-size: 13px; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--forest-text-2); opacity: 0.7; font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .park-cell { min-width: 0; }
+  .park-line { display: flex; align-items: center; gap: 9px; flex-wrap: nowrap; }
+  .park-ref {
+    font-family: 'Roboto Condensed', sans-serif; font-weight: 700;
+    font-size: 21px; color: var(--forest-text);
+    flex-shrink: 0;
+  }
+  .loc-chip {
+    font-family: 'Roboto Condensed', sans-serif; font-weight: 700;
+    font-size: 13.5px; letter-spacing: 1px;
+    padding: 2px 9px; border-radius: 6px;
+    background: var(--mint); border: 1.5px solid rgba(67,160,71,0.35);
+    color: var(--forest-text-2);
+    display: inline-flex; align-items: center; gap: 6px;
+    flex-shrink: 0;
+  }
+  .loc-chip.dx { background: #fff5ec; border-color: rgba(255,152,0,0.5); color: #b45f00; }
+  .loc-chip img { height: 13px; width: auto; border-radius: 2px; display: block; }
+  .zone-chip {
+    font-family: 'Roboto Condensed', sans-serif; font-weight: 700;
+    font-size: 13.5px; letter-spacing: 1px;
+    padding: 2px 9px; border-radius: 6px;
+    background: var(--orange); color: #fff;
+    flex-shrink: 0;
+  }
+  .park-name {
+    font-size: 15px; color: var(--forest-text-2); opacity: 0.85; margin-top: 3px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .comments {
+    font-size: 13px; font-style: italic; color: var(--gray); margin-top: 2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  .freq-block { text-align: right; }
+  .freq {
+    font-family: 'Roboto Condensed', sans-serif; font-weight: 700;
+    font-size: 26px; color: var(--forest-text);
+    font-variant-numeric: tabular-nums;
+  }
+  .band-tag {
+    font-family: 'Roboto Condensed', sans-serif; font-weight: 700;
+    font-size: 13px; color: #fff; background: var(--park-green);
+    border-radius: 6px; padding: 2px 8px; margin-left: 7px; vertical-align: 3px;
+  }
+  .time-age {
+    font-size: 14px; color: var(--forest-text-2); opacity: 0.8; margin-top: 4px;
+    font-variant-numeric: tabular-nums;
+    display: flex; align-items: center; justify-content: flex-end; gap: 7px;
+  }
+  .age-fresh { color: var(--orange); font-weight: 700; opacity: 1; }
+  .distance {
+    font-family: 'Roboto Condensed', sans-serif; font-weight: 700;
+    font-size: 15px; color: var(--forest-text-2); opacity: 0.9; margin-top: 3px;
+    font-variant-numeric: tabular-nums;
+  }
+  .spot.in-zone .distance { color: #b45f00; opacity: 1; }
+
+  .fresh-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--orange);
+    animation: pulse-glow 1.8s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+
+  .empty-state {
+    padding: 70px 30px 40px;
+    text-align: center;
+    color: var(--forest-text-2);
+    font-size: 22px; font-weight: 500;
+  }
+  .empty-state::before {
+    content: "📡";
+    display: block; font-size: 60px; margin-bottom: 18px; opacity: 0.45;
+  }
+  .empty-state .hint {
+    display: block; font-size: 15px; opacity: 0.6; margin-top: 10px;
+  }
+
+  /* Solar fallback shown inside the empty state when bands are quiet */
+  #solar-fallback {
+    margin: 30px auto 0;
+    max-width: 760px;
+    display: none;
+  }
+  #solar-fallback.visible { display: block; }
+  #solar-fallback .solar-title {
+    font-family: 'Roboto Condensed', sans-serif; font-weight: 700;
+    font-size: 17px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--forest-text-2); margin-bottom: 14px;
+  }
+  .solar-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+    margin-bottom: 16px;
+  }
+  .solar-stat {
+    background: var(--mint); border-radius: 10px; padding: 10px 6px 8px;
+    border-left: 4px solid var(--park-green);
+  }
+  .solar-stat .v {
+    font-family: 'Roboto Condensed', sans-serif; font-weight: 700;
+    font-size: 30px; color: var(--forest-text); line-height: 1;
+  }
+  .solar-stat .l {
+    font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--forest-text-2); opacity: 0.75; margin-top: 4px;
+  }
+  .cond-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+  }
+  .cond {
+    border-radius: 8px; padding: 7px 4px; font-size: 13px; font-weight: 600;
+    background: var(--mint); color: var(--forest-text-2);
+  }
+  .cond .b { display: block; font-size: 12px; opacity: 0.75; letter-spacing: 1px; }
+  .cond.good { background: rgba(67,160,71,0.22); color: var(--forest-text); }
+  .cond.fair { background: rgba(255,193,7,0.25); color: #7a5c00; }
+  .cond.poor { background: rgba(229,115,115,0.22); color: #a33; }
+
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 6px rgba(255,152,0,0.6); opacity: 1; }
+    50%      { box-shadow: 0 0 14px rgba(255,152,0,0.9); opacity: 0.85; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .fresh-dot { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div class="header-row">
+    <div id="title-wrap">
+      <h1>Parks on the Air <span class="accent">Live Spots</span></h1>
+      <div class="sub">All modes &middot; last <span id="window-label">20</span> minutes</div>
+    </div>
+    <div id="clock-wrap">
+      <div id="utc-clock">--:--:--<span class="z">UTC</span></div>
+      <div id="meta-line"><span id="local-line">--:--:-- ET</span> &nbsp;&middot;&nbsp; updated <span id="updated">--</span></div>
+    </div>
+  </div>
+
+  <div id="stat-strip">
+    <div class="stat" id="stat-onair"><div class="v">--</div><div class="l">On the Air</div></div>
+    <div class="stat" id="stat-zone"><div class="v">--</div><div class="l">In Zone 4</div></div>
+    <div class="stat hot" id="stat-band"><div class="v">--</div><div class="l">Top Band</div></div>
+    <div class="stat" id="stat-near"><div class="v">--</div><div class="l">Nearest</div></div>
+  </div>
+
+  <div id="band-row"></div>
+</div>
+
+<div id="spots-panel">
+  <div class="panel-title">
+    <span>Live Activity <span class="accent">&middot;</span> Newest First</span>
+    <span class="legend">
+      <span class="item"><span class="zone-key"></span> CQ Zone 4</span>
+      <span class="item"><span class="fresh-dot"></span> under 3 min</span>
+    </span>
+  </div>
+  <div class="spots-viewport" id="viewport">
+    <div class="spots-content" id="spotsContent">
+      <div class="empty-state">Waiting for spots...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // =====================================================================
+  // Data architecture:
+  //   PRIMARY:    https://api.pota.app/spot/          (live, every fetch)
+  //   ENRICHMENT: spothole-data layer on GitHub Pages (refreshes ~5 min)
+  // The board is fully functional on the primary feed alone. Enrichment
+  // adds operator names, distance from Clarkston, CQ zone, and a clean
+  // qrt flag. If the enrichment fetch fails, rows simply render without
+  // those extras. Never the other way around.
+  // =====================================================================
+
+  const PRIMARY_URL = 'https://api.pota.app/spot/';
+  const ENRICH_URL  = 'https://jmills06.github.io/spothole-data/data/latest/pota.json';
+  const SOLAR_URL   = 'https://jmills06.github.io/spothole-data/data/latest/solar.json';
+
+  const REFRESH_INTERVAL_S = 120;
+  const PIXELS_PER_SECOND = 12;
+  const SCROLL_PAUSE_MS = 3000;
+  const MAX_SPOTS_DISPLAY = 50;
+  const SPOT_AGE_LIMIT_MINUTES = 20;
+  const FRESH_MINUTES = 3;
+  const RESIZE_DEBOUNCE_MS = 250;
+
+  const BAND_PLANS = {
+    '160M': [1800, 2000],
+    '80M':  [3500, 4000],
+    '40M':  [7000, 7300],
+    '20M':  [14000, 14350],
+    '17M':  [18068, 18168],
+    '15M':  [21000, 21450],
+    '12M':  [24890, 24990],
+    '10M':  [28000, 29700],
+    '6M':   [50000, 54000]
+  };
+
+  const DIGITAL_MODES = ['FT8', 'FT4', 'DATA', 'DIGITAL', 'JS8', 'PSK31', 'RTTY'];
+
+  // ===== State =====
+  let countdownTime = REFRESH_INTERVAL_S;
+  let lastGoodFetch = null;
+  let enrichMap = {};        // callsign -> latest spothole record
+  let scrollOffset = 0;
+  let maxScroll = 0;
+  let scrollPaused = false;
+  let lastTimestamp = 0;
+
+  // ===== DOM cache =====
+  const el = {};
+  function initElements() {
+    ['utc-clock', 'local-line', 'updated', 'meta-line', 'band-row',
+     'stat-onair', 'stat-zone', 'stat-band', 'stat-near',
+     'viewport', 'spotsContent', 'window-label']
+      .forEach(id => el[id] = document.getElementById(id));
+    el['window-label'].textContent = SPOT_AGE_LIMIT_MINUTES;
+  }
+
+  // ===== Utilities =====
+  const esc = s => String(s ?? '').replace(/[&<>"']/g,
+    c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  // POTA API returns UTC timestamps without a trailing Z; add it so
+  // Date parses as UTC and epoch math is correct everywhere.
+  const parseUtc = t => new Date(t.endsWith('Z') ? t : t + 'Z');
+
+  const fmtLocal = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York', hour12: false,
+    hour: '2-digit', minute: '2-digit', second: '2-digit'
+  });
+  const fmtUtc = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'UTC', hour12: false,
+    hour: '2-digit', minute: '2-digit', second: '2-digit'
+  });
+  const fmtZone = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York', timeZoneName: 'short'
+  });
+
+  let zoneLabel = 'ET';
+  function setZoneLabel() {
+    const parts = fmtZone.formatToParts(new Date());
+    const zone = parts.find(p => p.type === 'timeZoneName');
+    if (zone) zoneLabel = zone.value;
+  }
+
+  function updateClocks() {
+    const now = new Date();
+    el['utc-clock'].innerHTML = fmtUtc.format(now) + '<span class="z">UTC</span>';
+    el['local-line'].textContent = fmtLocal.format(now) + ' ' + zoneLabel;
+  }
+
+  function getBand(freqKhz) {
+    for (const [band, [lo, hi]] of Object.entries(BAND_PLANS)) {
+      if (freqKhz >= lo && freqKhz <= hi) return band;
+    }
+    return null;
+  }
+
+  function formatAge(mins) {
+    if (mins < 60) return mins + ' min';
+    const h = Math.floor(mins / 60), m = mins % 60;
+    return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  }
+
+  function modeClass(mode) {
+    if (['SSB', 'USB', 'LSB', 'PHONE', 'AM', 'FM'].includes(mode)) return 'phone';
+    if (mode === 'CW') return 'cw';
+    if (DIGITAL_MODES.includes(mode)) return 'data';
+    return '';
+  }
+
+  // Comment-based QRT check (backup to the enrichment qrt flag)
+  const isQrtComment = comments => /(^|[^A-Za-z])QRT([^A-Za-z]|$)/i.test(comments || '');
+
+  // Base callsign for enrichment matching: strip portable prefixes and
+  // suffixes ("DK3RN/P" -> "DK3RN", "IA5/IW0RLC" -> "IW0RLC"). The base
+  // is the longest segment containing a digit.
+  function baseCall(call) {
+    const parts = call.split('/').filter(p => /\d/.test(p));
+    if (parts.length === 0) return call;
+    return parts.reduce((a, b) => (b.length > a.length ? b : a));
+  }
+
+  // locationDesc like "US-MI" or "US-VA,US-MD" (trail parks span states).
+  // US/CA get a readable state/province chip; DX gets a country flag.
+  function locChip(locationDesc) {
+    if (!locationDesc) return '';
+    const first = locationDesc.split(',')[0].trim();
+    const dash = first.indexOf('-');
+    const country = dash > 0 ? first.slice(0, dash).toUpperCase() : first.toUpperCase();
+    const region = dash > 0 ? first.slice(dash + 1).toUpperCase() : '';
+
+    if (country === 'US' || country === 'CA') {
+      return `<span class="loc-chip">${esc(region || country)}</span>`;
+    }
+    const cc = country.toLowerCase();
+    return `<span class="loc-chip dx">` +
+      `<img src="https://flagcdn.com/h20/${esc(cc)}.png" alt="" onerror="this.style.display='none'">` +
+      `${esc(first)}</span>`;
+  }
+
+  // ===== Enrichment layer =====
+  function fetchEnrichment() {
+    return fetch(ENRICH_URL, { cache: 'no-store' })
+      .then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(data => {
+        if (!Array.isArray(data)) return;
+        const map = {};
+        // Array is newest-first; keep the first record seen per callsign.
+        data.forEach(rec => {
+          if (!rec.dx_call) return;
+          const keys = [rec.dx_call.toUpperCase(), baseCall(rec.dx_call.toUpperCase())];
+          keys.forEach(k => { if (!map[k]) map[k] = rec; });
+        });
+        enrichMap = map;
+      })
+      .catch(err => {
+        // Enrichment is optional: keep the previous map and move on.
+        console.warn('Enrichment fetch failed:', err);
+      });
+  }
+
+  function getEnrichment(callsign) {
+    return enrichMap[callsign] || enrichMap[baseCall(callsign)] || null;
+  }
+
+  // ===== Primary fetch =====
+  function refreshData() {
+    // Enrichment first (non-blocking on failure), then primary render.
+    fetchEnrichment().then(fetchPOTASpots);
+  }
+
+  function fetchPOTASpots() {
+    fetch(PRIMARY_URL)
+      .then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(data => {
+        if (!Array.isArray(data)) throw new Error('Invalid data format');
+
+        // Keep only the most recent spot per activator
+        const latest = {};
+        data.forEach(spot => {
+          if (!spot.activator || !spot.spotTime) return;
+          const key = spot.activator.toUpperCase();
+          if (!latest[key] || parseUtc(spot.spotTime) > parseUtc(latest[key].spotTime)) {
+            latest[key] = spot;
+          }
+        });
+
+        const cutoff = Date.now() - SPOT_AGE_LIMIT_MINUTES * 60000;
+
+        const filtered = Object.values(latest).filter(spot => {
+          const spotMs = parseUtc(spot.spotTime).getTime();
+          if (spotMs < cutoff) return false;
+          if (isQrtComment(spot.comments)) return false;
+          // Enrichment qrt flag: trust it only when the enrichment record
+          // is at least as new as the spot we are showing.
+          const enr = getEnrichment(spot.activator.toUpperCase());
+          if (enr && enr.qrt && (enr.time * 1000) >= spotMs) return false;
+          return true;
+        });
+
+        filtered.sort((a, b) => parseUtc(b.spotTime) - parseUtc(a.spotTime));
+        const spots = filtered.slice(0, MAX_SPOTS_DISPLAY);
+
+        populateSpots(spots);
+        updateStats(spots);
+        updateBandCounts(spots);
+
+        lastGoodFetch = new Date();
+        el['meta-line'].classList.remove('stale');
+        el['updated'].textContent = fmtLocal.format(lastGoodFetch);
+      })
+      .catch(err => {
+        console.error('POTA fetch error:', err);
+        // Keep last good data on screen; just flag the stamp as stale
+        el['meta-line'].classList.add('stale');
+        el['updated'].textContent = lastGoodFetch
+          ? 'stale, last ' + fmtLocal.format(lastGoodFetch)
+          : 'connection issue';
+        // Retry sooner after a failure
+        countdownTime = Math.min(countdownTime, 30);
+      });
+  }
+
+  // Distance is park-specific: only use it when the enrichment record is
+  // for the same park reference, so rovers never show a stale mileage.
+  function enrichmentFor(spot) {
+    const enr = getEnrichment((spot.activator || '').toUpperCase());
+    if (!enr) return { name: null, inZone: false, distance: null };
+
+    const refMatch = Array.isArray(enr.sig_refs) &&
+      enr.sig_refs.some(r => r && r.id === spot.reference);
+
+    return {
+      name: enr.dx_name || null,
+      inZone: enr.in_my_cq_zone === true,
+      distance: (refMatch && typeof enr.distance_from_qth_mi === 'number')
+        ? enr.distance_from_qth_mi : null
+    };
+  }
+
+  function populateSpots(spots) {
+    if (spots.length === 0) {
+      el.spotsContent.innerHTML =
+        '<div class="empty-state">The bands are quiet' +
+        `<span class="hint">No POTA spots in the last ${SPOT_AGE_LIMIT_MINUTES} minutes</span>` +
+        '<div id="solar-fallback"></div></div>';
+      showSolarFallback();
+      recomputeScroll();
+      return;
+    }
+
+    const nowMs = Date.now();
+
+    el.spotsContent.innerHTML = spots.map(spot => {
+      const callsign = esc((spot.activator || 'Unknown').toUpperCase());
+      const mode = (spot.mode || '').toUpperCase();
+      const ageMin = Math.max(0, Math.floor((nowMs - parseUtc(spot.spotTime).getTime()) / 60000));
+      const isFresh = ageMin < FRESH_MINUTES;
+      const enr = enrichmentFor(spot);
+
+      const freqKhz = parseFloat(spot.frequency);
+      const band = isNaN(freqKhz) ? null : getBand(freqKhz);
+      const timePart = spot.spotTime.includes('T')
+        ? spot.spotTime.split('T')[1].slice(0, 5) : '--:--';
+      const spotNum = Number(spot.count) || 0;
+
+      return `
+        <div class="spot${enr.inZone ? ' in-zone' : ''}">
+          <div style="min-width:0">
+            <div class="callsign">${callsign}</div>
+            ${enr.name ? `<div class="op-name">${esc(enr.name)}</div>` : ''}
+            <div class="call-meta">
+              <span class="mode-chip ${modeClass(mode)}">${esc(mode || '?')}</span>
+              ${spotNum > 0 ? `<span class="spot-count">Spot ${spotNum}</span>` : ''}
+            </div>
+          </div>
+          <div class="park-cell">
+            <div class="park-line">
+              <span class="park-ref">${esc(spot.reference || 'N/A')}</span>
+              ${locChip(spot.locationDesc)}
+              ${enr.inZone ? '<span class="zone-chip">ZONE 4</span>' : ''}
+            </div>
+            <div class="park-name">${esc(spot.name || '')}</div>
+            ${spot.comments ? `<div class="comments">${esc(spot.comments)}</div>` : ''}
+          </div>
+          <div class="freq-block">
+            <div class="freq">${esc(spot.frequency || 'N/A')}${band ? `<span class="band-tag">${band}</span>` : ''}</div>
+            <div class="time-age">
+              ${isFresh ? '<span class="fresh-dot"></span>' : ''}
+              ${timePart}z &middot; <span class="${isFresh ? 'age-fresh' : ''}">${formatAge(ageMin)}</span>
+            </div>
+            ${enr.distance !== null ? `<div class="distance">${Math.round(enr.distance).toLocaleString()} mi</div>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+
+    recomputeScroll();
+  }
+
+  function updateStats(spots) {
+    let inZone = 0;
+    let nearest = null;
+
+    spots.forEach(spot => {
+      const enr = enrichmentFor(spot);
+      if (enr.inZone) inZone++;
+      if (enr.distance !== null && (nearest === null || enr.distance < nearest)) {
+        nearest = enr.distance;
+      }
+    });
+
+    const counts = bandCounts(spots);
+    let topBand = '--', topCount = 0;
+    for (const [band, count] of Object.entries(counts)) {
+      if (count > topCount) { topBand = band; topCount = count; }
+    }
+
+    el['stat-onair'].querySelector('.v').textContent = spots.length;
+    el['stat-zone'].querySelector('.v').textContent = inZone;
+    el['stat-band'].querySelector('.v').textContent = topCount > 0 ? topBand : '--';
+    el['stat-near'].querySelector('.v').innerHTML = nearest !== null
+      ? Math.round(nearest).toLocaleString() + '<span class="unit">mi</span>' : '--';
+  }
+
+  function bandCounts(spots) {
+    const counts = {};
+    Object.keys(BAND_PLANS).forEach(b => counts[b] = 0);
+    spots.forEach(spot => {
+      const f = parseFloat(spot.frequency);
+      if (isNaN(f)) return;
+      const band = getBand(f);
+      if (band) counts[band]++;
+    });
+    return counts;
+  }
+
+  function updateBandCounts(spots) {
+    const counts = bandCounts(spots);
+    const max = Math.max(...Object.values(counts));
+    el['band-row'].innerHTML = Object.entries(counts)
+      .map(([band, count]) => {
+        let cls = 'band-chip';
+        if (count === 0) cls += ' zero';
+        else if (count === max && max > 0) cls += ' hot';
+        return `<div class="${cls}"><span class="num">${count}</span><span class="lbl">${band}</span></div>`;
+      })
+      .join('');
+  }
+
+  // ===== Solar fallback (only fetched when the board is empty) =====
+  function condClass(v) {
+    if (v === 'Good') return 'good';
+    if (v === 'Fair') return 'fair';
+    if (v === 'Poor') return 'poor';
+    return '';
+  }
+
+  function showSolarFallback() {
+    const container = document.getElementById('solar-fallback');
+    if (!container) return;
+
+    fetch(SOLAR_URL, { cache: 'no-store' })
+      .then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(solar => {
+        // Choose the day or night condition set by local hour
+        const hourET = parseInt(fmtLocal.format(new Date()).slice(0, 2), 10);
+        const isDay = hourET >= 7 && hourET < 19;
+        const suffix = isDay ? 'day' : 'night';
+        const hf = solar.hf_conditions || {};
+        const pairs = ['80m-40m', '30m-20m', '17m-15m', '12m-10m'];
+
+        container.innerHTML =
+          `<div class="solar-title">Band Conditions &middot; ${isDay ? 'Day' : 'Night'}</div>` +
+          '<div class="solar-grid">' +
+            `<div class="solar-stat"><div class="v">${esc(solar.sfi ?? '--')}</div><div class="l">SFI</div></div>` +
+            `<div class="solar-stat"><div class="v">${esc(solar.a_index ?? '--')}</div><div class="l">A Index</div></div>` +
+            `<div class="solar-stat"><div class="v">${esc(solar.k_index ?? '--')}</div><div class="l">K Index</div></div>` +
+            `<div class="solar-stat"><div class="v">${esc(solar.sunspots ?? '--')}</div><div class="l">Sunspots</div></div>` +
+          '</div>' +
+          '<div class="cond-grid">' +
+          pairs.map(p => {
+            const v = hf[`${p}-${suffix}`] || '--';
+            return `<div class="cond ${condClass(v)}"><span class="b">${p.toUpperCase()}</span>${esc(v)}</div>`;
+          }).join('') +
+          '</div>';
+        container.classList.add('visible');
+        recomputeScroll();
+      })
+      .catch(err => {
+        console.warn('Solar fetch failed:', err);
+        // Empty state simply stays as-is without conditions
+      });
+  }
+
+  // ===== Single 1-second tick: clocks + countdown + fetch trigger =====
+  function tick() {
+    updateClocks();
+    countdownTime--;
+    if (countdownTime <= 0) {
+      countdownTime = REFRESH_INTERVAL_S;
+      refreshData();
+    }
+  }
+
+  // ===== Auto-scroll via transform (compositor-friendly) =====
+  function recomputeScroll() {
+    maxScroll = Math.max(0, el.spotsContent.offsetHeight - el.viewport.clientHeight);
+    // If content shrank below current position, snap back to top.
+    // Otherwise leave position alone so refreshes don't yank the view.
+    if (scrollOffset > maxScroll) {
+      scrollOffset = 0;
+      el.spotsContent.style.transform = 'translate3d(0,0,0)';
+    }
+  }
+
+  function scrollLoop(timestamp) {
+    if (!scrollPaused && maxScroll > 0) {
+      if (lastTimestamp === 0) lastTimestamp = timestamp;
+      const dt = (timestamp - lastTimestamp) / 1000;
+      lastTimestamp = timestamp;
+
+      scrollOffset += PIXELS_PER_SECOND * dt;
+
+      if (scrollOffset >= maxScroll) {
+        scrollOffset = maxScroll;
+        el.spotsContent.style.transform = `translate3d(0, ${-scrollOffset}px, 0)`;
+        scrollPaused = true;
+        setTimeout(() => {
+          scrollOffset = 0;
+          el.spotsContent.style.transform = 'translate3d(0,0,0)';
+          scrollPaused = false;
+          lastTimestamp = 0;
+        }, SCROLL_PAUSE_MS);
+      } else {
+        el.spotsContent.style.transform = `translate3d(0, ${-scrollOffset}px, 0)`;
+      }
+    } else {
+      lastTimestamp = timestamp;
+    }
+    requestAnimationFrame(scrollLoop);
+  }
+
+  let resizeTimeout;
+  function handleResize() {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(recomputeScroll, RESIZE_DEBOUNCE_MS);
+  }
+
+  function init() {
+    initElements();
+    setZoneLabel();
+    updateClocks();
+    refreshData();
+    setInterval(tick, 1000);
+    requestAnimationFrame(scrollLoop);
+    window.addEventListener('resize', handleResize);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+</script>
+
+</body>
+</html>
