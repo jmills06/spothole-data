@@ -13,11 +13,15 @@ concurrency:
 jobs:
   collect:
     runs-on: ubuntu-latest
+    # A normal run takes a few minutes; fail fast instead of hanging for 45+.
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          # Only the latest commit is needed. Full history (thousands of commits
+          # rewriting 30 MB jsonl files) made checkout stall and the runner drop.
+          fetch-depth: 1
 
       - name: Set up Python
         uses: actions/setup-python@v5
